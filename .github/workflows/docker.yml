@@ -19,7 +19,6 @@ jobs:
         run: |
           echo "=== 检查Dockerfile ==="
           echo "当前目录: $(pwd)"
-          echo ""
           echo "文件列表:"
           ls -la
           echo ""
@@ -29,18 +28,11 @@ jobs:
             echo "文件大小: $(wc -c < Dockerfile) 字节"
             echo "行数: $(wc -l < Dockerfile) 行"
             echo ""
-            echo "=== Dockerfile内容 ==="
-            cat -A Dockerfile
-            echo "=== 内容结束 ==="
+            echo "=== Dockerfile内容（前10行）==="
+            head -10 Dockerfile
           else
             echo "Dockerfile不存在！"
-            echo "查找所有Dockerfile:"
-            find . -name "Dockerfile" -type f
           fi
-          echo ""
-          echo "=== 当前git状态 ==="
-          git status
-          git log --oneline -3
 
       - name: Set env
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
@@ -55,8 +47,6 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: ./Dockerfile  # 明确指定Dockerfile路径
+          file: ./Dockerfile
           push: true
           tags: ${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ env.RELEASE_VERSION }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
