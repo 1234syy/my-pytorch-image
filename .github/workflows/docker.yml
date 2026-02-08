@@ -14,20 +14,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Create a simple Dockerfile for testing
+      - name: Debug - Show all files
         run: |
-          echo "=== 创建测试Dockerfile ==="
-          cat > Dockerfile << 'EOF'
-FROM alpine:latest
-RUN echo "Test build successful"
-EOF
-          echo "=== 测试Dockerfile内容 ==="
-          cat Dockerfile
-          echo "=== 文件大小 ==="
-          wc -c Dockerfile
+          echo "=== 所有文件 ==="
+          ls -la
+          echo ""
+          echo "=== 检查Dockerfile ==="
+          if [ -f "Dockerfile" ]; then
+            echo "Dockerfile存在，大小: $(wc -c < Dockerfile) bytes"
+            echo "前5行:"
+            head -5 Dockerfile
+          fi
 
-      - name: Set env
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - name: Set explicit version
+        run: |
+          # 直接设置版本号，避免解析问题
+          echo "GITHUB_REF = $GITHUB_REF"
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "VERSION = $VERSION"
+          echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -35,9 +40,22 @@ EOF
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Build and test locally first
+        run: |
+          echo "=== 测试本地构建 ==="
+          if [ -f "Dockerfile" ]; then
+            echo "尝试本地构建测试..."
+            docker build -t test-image -f Dockerfile . || echo "本地构建失败"
+          else
+            echo "错误：Dockerfile不存在！"
+            exit 1
+          fi
+
       - name: Build and Push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           push: true
-          tags: ${{ github.repository_owner }}/${{ github.event.repository.name }}:test-${{ env.RELEASE_VERSION }}
+          tags: |
+            ${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+            ${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ env.RELEASE_VERSION }}
