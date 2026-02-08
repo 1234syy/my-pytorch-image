@@ -10,19 +10,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # 获取完整的git历史
+
+      - name: Debug - List files
+        run: |
+          echo "当前目录:"
+          pwd
+          echo "文件列表:"
+          ls -la
+          echo "检查Dockerfile是否存在:"
+          if [ -f "Dockerfile" ]; then
+            echo "Dockerfile 存在"
+            echo "Dockerfile内容:"
+            cat Dockerfile
+          else
+            echo "Dockerfile 不存在"
+            echo "查找Dockerfile:"
+            find . -name "Dockerfile" -type f
+          fi
 
       - name: Set env
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@v2
         with:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Push to Docker Hub
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v4
         with:
+          context: .
           push: true
           tags: ${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ env.RELEASE_VERSION }}
